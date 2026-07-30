@@ -22,47 +22,91 @@ Questa guida adatta l'installazione di un emulatore Android rootato con Magisk e
 | `07-props-spoof.sh` | Configura lo spoofing hardware (Pixel 6) |
 | `run-all.sh` | Script master che esegue tutto in sequenza |
 
+## Prima di iniziare: previeni la perdita di dati
+
+Il processo dell'emulatore (e Xvfb/x11vnc) vengono uccisi da systemd quando la
+sessione SSH si disconnette, a meno che tu non abiliti il "lingering":
+
+```bash
+loginctl enable-linger root
+```
+
+Fallo **subito**, prima di lanciare qualunque script — altrimenti una
+disconnessione SSH improvvisa può corrompere/perdere le scritture recenti sul
+disco virtuale di Android (impostazioni Magisk, modulo spoof, ecc), come
+successo più volte durante lo sviluppo di questa guida.
+
 ## Utilizzo rapido
 
 ```bash
+loginctl enable-linger root
 chmod +x *.sh
 ./run-all.sh
 ```
+
+`run-all.sh` esegue in automatico gli step 00-06. Lo **step 07 richiede
+interazione manuale** (vedi sotto) perché il tool `props` del modulo
+MagiskHidePropsConf è un menu interattivo non affidabilmente automatizzabile.
 
 Oppure passo per passo:
 
 ```bash
 ./00-install-deps.sh
 ./01-setup-android-sdk.sh
-source ~/.bashrc
+source /etc/profile.d/android-sdk.sh
 ./02-create-avd.sh
 ./03-start-emulator.sh   # avvia in background
 ./04-root-avd.sh
-# Riavvia emulatore dopo l'installazione di Magisk
 ./05-configure-magisk.sh
 ./06-install-spoof.sh
-./07-props-spoof.sh
+./07-props-spoof.sh      # ti guida passo-passo, richiede VNC (vedi sotto)
 ```
+
+## Accesso visivo (VNC) — necessario per alcuni step
+
+Alcuni passaggi (concedere il permesso di root la prima volta, completare il
+setup di Magisk, il menu `props`) richiedono un'interazione visiva con lo
+schermo dell'emulatore — non sono automatizzabili alla cieca via ADB.
+
+```bash
+apt install -y x11vnc
+x11vnc -display :99 -nopw -localhost -forever -bg -rfbport 5900
+```
+
+Poi apri un tunnel SSH dal tuo computer:
+
+```bash
+ssh -L 5900:127.0.0.1:5900 root@<IP_DEL_TUO_SERVER>
+```
+
+E connettiti con un client VNC (es. TigerVNC, RealVNC Viewer) a `localhost:5900`.
 
 ## Corrispondenza con la guida originale
 
 | Step guida (Windows) | Equivalente VPS |
 |----------------------|-----------------|
 | Android Studio → Virtual Device Manager | `avdmanager` da CLI |
-| Avvio VM da Android Studio | `emulator -avd ... -no-window` |
+| Avvio VM da Android Studio | `emulator -avd ...` su display Xvfb + VNC |
 | PowerShell → platform-tools | ADB disponibile direttamente |
 | `.\adb.exe devices` | `adb devices` |
 | `.\adb.exe shell` | `adb shell` |
 | rootAVD.bat | `rootAVD.sh` (versione Linux) |
-| Xvfb | Display virtuale per l'emulatore |
+| Finestra emulatore Android Studio | Xvfb + x11vnc (vedi sopra) |
 
 ## Note importanti
 
-- L'emulatore gira su display virtuale (`:99`) tramite Xvfb
+- L'emulatore gira su display virtuale (`:99`) tramite Xvfb, visibile via VNC
+- **Non usare `-no-window`**: senza una finestra reale non c'è nulla da mostrare via VNC
 - Il dispositivo viene configurato come **Google Pixel 6** (fingerprint + hardware)
 - Durante il rooting la VM si spegne automaticamente — è normale
-- Dopo `su` nell'ADB shell, l'emulatore chiederà GRANT: usa `adb shell su -c "..."` per automatizzare
-- **NON modificare** `ro.build.version.sdk` (rimane DISABLED)
+- La prima volta che esegui `su`, Magisk mostra un popup Grant/Deny **sullo
+  schermo** (visibile solo via VNC) — se scade il timeout senza risposta la
+  policy può restare "Deny" permanente: vai in Magisk → tab **Superuser** e
+  attiva manualmente il toggle per `[SharedUID] Shell`
+- **NON modificare** `ro.build.version.sdk` nel tool `props` (deve restare
+  "disabled", opzione 7 nel menu "Device simulation")
+- Prima di disconnetterti definitivamente, spegni l'emulatore in modo pulito
+  con `adb emu kill` invece di lasciar cadere la sessione SSH
 
 ## Variabili configurabili
 
