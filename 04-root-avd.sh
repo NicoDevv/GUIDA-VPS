@@ -36,12 +36,14 @@ bash rootAVD.sh listAllAvds
 
 echo ""
 echo ">>> [04] Identificazione ramdisk per API $API_LEVEL..."
-# Cerca il ramdisk dell'AVD creato (x86_64, API 33, google_apis)
-RAMDISK=$(bash rootAVD.sh listAllAvds 2>/dev/null | grep -i "x86_64" | grep "${API_LEVEL}" | grep -i "google_apis" | head -1 | awk '{print $NF}')
+# Path deterministico: è esattamente quello creato da sdkmanager in 01-setup-android-sdk.sh
+# (system-images;android-$API_LEVEL;google_apis;x86_64), quindi non serve fare parsing
+# fragile dell'output di listAllAvds.
+RAMDISK="system-images/android-${API_LEVEL}/google_apis/x86_64/ramdisk.img"
 
-if [ -z "$RAMDISK" ]; then
-    echo "    ATTENZIONE: ramdisk non rilevato automaticamente."
-    echo "    Output completo disponibili:"
+if [ ! -f "$ANDROID_HOME/$RAMDISK" ]; then
+    echo "    ATTENZIONE: ramdisk non trovato in \$ANDROID_HOME/$RAMDISK"
+    echo "    Output disponibili da listAllAvds:"
     bash rootAVD.sh listAllAvds
     echo ""
     read -rp "Incolla qui il percorso ramdisk completo (es: system-images/android-33/google_apis/x86_64/ramdisk.img): " RAMDISK
@@ -55,7 +57,10 @@ echo "    L'emulatore si SPEGNERÀ automaticamente — è normale."
 echo "    Equivalente: ./<ramdisk_path>"
 echo ""
 
-bash rootAVD.sh "$RAMDISK"
+# rootAVD.sh mostra un menu interattivo per scegliere la versione di Magisk
+# (l'opzione di default, marcata "(ENTER)", è già quella locale/stabile).
+# Gli forniamo un ENTER da stdin per selezionarla senza bloccare lo script.
+echo | bash rootAVD.sh "$RAMDISK"
 
 echo ""
 echo ">>> [04] Riavvio emulatore dopo installazione Magisk (STEP 10)..."
