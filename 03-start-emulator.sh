@@ -17,13 +17,17 @@ XVFB_PID=$!
 export DISPLAY="$DISPLAY_NUM"
 sleep 2
 
-echo ">>> [03] Avvio emulatore Android AVD: $AVD_NAME (headless)..."
+echo ">>> [03] Avvio emulatore Android AVD: $AVD_NAME su display virtuale $DISPLAY_NUM..."
 pkill -f "emulator.*$AVD_NAME" 2>/dev/null || true
 sleep 1
 
+# NON usiamo -no-window: la UI dell'emulatore deve renderizzare sul display
+# Xvfb virtuale, così è visibile via VNC per gli step che richiedono
+# interazione manuale (Grant root, setup Magisk, ecc). Il tutto resta comunque
+# "headless" nel senso che non serve un monitor fisico: Xvfb è invisibile
+# finché non ci si collega con un client VNC.
 "$ANDROID_HOME/emulator/emulator" \
     -avd "$AVD_NAME" \
-    -no-window \
     -no-audio \
     -no-boot-anim \
     -gpu swiftshader_indirect \

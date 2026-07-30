@@ -68,7 +68,6 @@ sleep 5
 
 "$ANDROID_HOME/emulator/emulator" \
     -avd "$AVD_NAME" \
-    -no-window \
     -no-audio \
     -no-boot-anim \
     -gpu swiftshader_indirect \
